@@ -36,7 +36,8 @@ struct cacheLT {
   long hash;
   unsigned long size;
 };
-VTAILQ_HEAD(cacheLT_head, cacheLT);
+VTAILQ_HEAD(cacheLT_head1, cacheLT);
+VTAILQ_HEAD(cacheLT_head2, cacheLT);
 
 // varnish hashmaptree
 struct cacheMT {
@@ -46,7 +47,8 @@ struct cacheMT {
   struct cacheLT * listEntry;
 };
 
-static VRB_HEAD(t_key, cacheMT) h_key = VRB_INITIALIZER(&h_key);
+static VRB_HEAD(t_key1, cacheMT) h_key1 = VRB_INITIALIZER(&h_key1);
+static VRB_HEAD(t_key2, cacheMT) h_key2 = VRB_INITIALIZER(&h_key2);
 
 static inline int
 lcmp_key(const struct cacheMT *a, const struct cacheMT *b)
@@ -56,13 +58,22 @@ lcmp_key(const struct cacheMT *a, const struct cacheMT *b)
   return (a->size - b->size);
 }
 
-VRB_PROTOTYPE_STATIC(t_key, cacheMT, e_key, lcmp_key);
-VRB_GENERATE_STATIC(t_key, cacheMT, e_key, lcmp_key);
+VRB_PROTOTYPE_STATIC(t_key1, cacheMT, e_key, lcmp_key);
+VRB_GENERATE_STATIC(t_key1, cacheMT, e_key, lcmp_key);
+VRB_PROTOTYPE_STATIC(t_key2, cacheMT, e_key, lcmp_key);
+VRB_GENERATE_STATIC(t_key2, cacheMT, e_key, lcmp_key);
 
-struct cacheLT_head cacheList;
-long current_objectc;
-long current_size;
+struct cacheLT_head1 cacheList1;
+struct cacheLT_head2 cacheList2;
+long current_objectc1;
+long current_objectc2;
+long current_size1;
+long current_size2;
 long unsigned hitc1, hitc2;
+
+// hillclimbing
+double lookSize;
+double stepSize;
 
 int
 init_function(const struct vrt_ctx *ctx, struct vmod_priv *priv,
