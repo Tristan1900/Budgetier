@@ -11,4 +11,4 @@ DESCRIPTION
 ===========
 
 $Event init_function # does nothing
-$Function BOOL lru(STRING)
+$Function BOOL vmod_lru(STRING)

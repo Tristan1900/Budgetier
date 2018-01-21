@@ -9,7 +9,7 @@ backend default {
 }
 
 sub vcl_backend_response {
-    if (autoparam.vmod_lru(beresp.url)) {
+    if (!autoparam.lru(bereq.url, beresp.http.content.length, 1)) {
         set beresp.uncacheable = true;
         set beresp.ttl = 0s;
         return (deliver);
