@@ -79,8 +79,9 @@ int
 init_function(const struct vrt_ctx *ctx, struct vmod_priv *priv,
         enum vcl_event_e e)
 {
-  if (e != VCL_EVENT_LOAD)
+  if (e != VCL_EVENT_LOAD) {
     return (0);
+  }
 
   /* init what you need */
   return (0);
@@ -96,10 +97,11 @@ vmod_lru(VRT_CTX, VCL_STRING p, VCL_INT id, VCL_BOOL whichCache) {
   struct cacheMT *lp, l;
   l.hash = id;
   l.size = size;
-  if(whichCache)
+  if(whichCache) {
     lp = VRB_FIND(t_key1, &h_key1, &l);
-  else
+  } else {
     lp = VRB_FIND(t_key2, &h_key2, &l);
+  }
   if(lp) {
     struct cacheLT *w2;
     w2 = lp->listEntry;
@@ -114,8 +116,9 @@ vmod_lru(VRT_CTX, VCL_STRING p, VCL_INT id, VCL_BOOL whichCache) {
   }
 
   // check object size
-  if(size>cache_size)
+  if(size>cache_size) {
     return(0); //cannot admit at all
+  }
   // check if want to admit
   if( (strcmp("ThLRU",cacheType)==0 && pow(2,tparam) < size) || (strcmp("ExpLRU",cacheType)==0 && exp(-1*((double)size)/ pow(2,tparam)) < drand48()) ) {
     //    printf("%s: dont admit\n",cacheType);
@@ -130,18 +133,20 @@ vmod_lru(VRT_CTX, VCL_STRING p, VCL_INT id, VCL_BOOL whichCache) {
     current_size = &current_size2;
   while(*current_size + size>cache_size) {
     struct cacheLT *wr;
-    if(whichCache)
+    if(whichCache) {
       wr = VTAILQ_FIRST(&cacheList1);
-    else
+    } else {
       wr = VTAILQ_FIRST(&cacheList2);
+    }
     assert(wr);
     struct cacheMT tpt, * tpr;
     tpt.hash = wr->hash;
     tpt.size = wr->size;
-    if(whichCache)
+    if(whichCache) {
       tpr = VRB_FIND(t_key1, &h_key1, &tpt);
-    else
+    } else {
       tpr = VRB_FIND(t_key2, &h_key2, &tpt);
+    }
     if(!tpr) {
       printf("not found: %lu %lu [cache:%i]\n",wr->hash,wr->size,whichCache);
     }
@@ -169,10 +174,11 @@ vmod_lru(VRT_CTX, VCL_STRING p, VCL_INT id, VCL_BOOL whichCache) {
   //  printf("insert: %lu %lu (%li|%li)\n",w->hash,w->size,*current_size,cache_size);
   fflush(stdout);
   *current_size += size;
-  if(whichCache)
+  if(whichCache) {
     VTAILQ_INSERT_TAIL(&cacheList1, w, list);
-  else
+  } else {
     VTAILQ_INSERT_TAIL(&cacheList2, w, list);
+  }
   // insert into cacheMT tree
   lp = malloc(sizeof(struct cacheMT));
   lp->hash = id;
