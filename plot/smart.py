@@ -1,15 +1,8 @@
-import matplotlib.pyplot as plt
 import numpy as np
 import re
 
-smooth = 0
-def compress_array(array):
-	array = np.nanmean(np.pad(array.astype(float), (0, smooth - array.size%smooth), mode='constant', constant_values=np.NaN).reshape(-1, smooth), axis=1)
-	return array
-
 def get_smart(name):
 	disk_written = []
-	rest = 40
 	count = 0
 	with open(name,"r") as f:
 		for line in f:
@@ -42,8 +35,9 @@ def get_smart(name):
 			disk_written[i] = float(x) - pre
 			pre = tmp
 
-	disk_written = [float(x) * 512/1000 for x in disk_written]
-	disk_written = np.array(disk_written)
+	disk_written = [float(x) * 512/1000/1000 for x in disk_written]
+	#sample every 5 seconds
+	disk_written = np.array(disk_written)/5
 	return disk_written, total
 
 
