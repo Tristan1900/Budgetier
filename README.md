@@ -1,6 +1,8 @@
-# The disk cache tuning research experiment
+# The Disk Cache Tuning Experiment
 This is a research experiment for NVMe disk cache system with a background of CDN disk-based cache.
+
 NVMe is an interface specification developed specifically for NAND flash and next-generation SSDs, it is super fast both in read and write compared to SATA interface. But the problem with NAND flash is that it has certain amount of writes during its life time. For a samsung SSD(960 EVO NVMe M.2 250GB) that we use for experiment, it has 150TB write budget according to Smartmontools.
+
 The goal of this research is
 * to find a good control policy that can limit the object admission to disk cache
 * to maintain high hit ratios 
