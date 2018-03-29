@@ -18,4 +18,5 @@ The basic steps to start a new vmod from this disk are::
   ./rename-vmod-script $name
 
 and follow the instructions output by rename-vmod-script
+
 remember to git checkout to your varnish version, different version will not compile according to my experience.

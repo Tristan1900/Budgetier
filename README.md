@@ -36,6 +36,7 @@ Another way to control admission is to use a probability model. Instead of setti
 
 
 ### Prerequisites
+We use ubuntu 17.10, so the following guide is based on that.
 
 To build varnish from scratch, we first need to install [dependencies](https://varnish-cache.org/docs/trunk/installation/install.html)
 
@@ -55,7 +56,10 @@ sudo apt-get install \
     python-docutils \
     python-sphinx
 ```
-
+Also need to install Golang since our client is written in Go
+```
+sudo apt-get install golang-go
+```
 ### Get Varnish source code
 
 We use latest Varnish version 6.0 from github.
@@ -77,7 +81,44 @@ make install
 ```
 
 ### Install Vmod
+Vmod is the place that we can implement our own policy, to install it, you can
+```
+cd vmod-disk
+export PKG_CONFIG_PATH=/usr/local/varnish/lib/pkgconfig
+./autogen.sh --prefix=/usr/local/varnish
+./configure --prefix=/usr/local/varnish/
+make
+make install
+```
 
+### How to call vmod
+We can use vcl to control varnish and to call our vmod, a sample vcl file that we use looks like this
+```
+vcl 4.0;
+
+import static;
+import std;
+
+backend default {
+    .host = "127.0.0.1";
+    .port = "7000";
+}
+sub vcl_backend_response {
+  if (!static.lru(bereq.url,beresp.http.Content-Length,true,0.25)) {
+      set beresp.uncacheable = true;
+      set beresp.ttl = 0s;
+      return (deliver);
+  } else {
+	set beresp.uncacheable = false;
+	set beresp.ttl = 2419000s;
+	return(deliver);
+  }
+}
+
+```
+The code above means if a cache miss happen, varnish will go to fetch data from backend, and after response returns, it will call vcl_backend_response. Then we call our static vmod to apply our policy.
+
+For detailed information how to write vcl you can go [here](https://varnish-cache.org/docs/trunk/users-guide/vcl.html)
 
 ## Setting up experiment
 
@@ -91,7 +132,7 @@ Here we name the trace origin.tr, which not included in this repo.
 ### Start Varnish
 In our case
 ```
-sudo /usr/local/varnish/sbin/varnishd -a 0.0.0.0:6081 -n /your/dir/of/vsm -f /your/dir/of/vcl_file -T localhost:6082 -s Memory=file,/scratch/varnishcache.dat,200g -s Transient=malloc,5G
+sudo /usr/local/varnish/sbin/varnishd -a 0.0.0.0:6081 -n /your/dir/of/vsm -f /your/dir/of/vcl_file -T localhost:6082 -s Memory=file,/your/dir/of/nvme/cache.dat,200g -s Transient=malloc,5G
 ```
 ### Start monitor tools
 
@@ -120,7 +161,7 @@ sudo /usr/local/varnish/bin/varnishstat -n /your/dir/of/vsm -f MAIN.client_req -
 The vsm directory is where varnishstat will read shared log. To output into a file we can use flag -j, it will output in json format and it is easy to parse when plotting.
 
 ### Start client
-Start client to send request by use flag -clientTrace
+Start client to send request by using flag -clientTrace
 ```
 cd ./client
 go build client.go
