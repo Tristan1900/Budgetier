@@ -31,7 +31,7 @@ The way to tune the threshold is similar to [Pannier](https://dl.acm.org/citatio
 Another way to control admission is to use a probability model. Instead of setting threshold and maintaing ghost cache, we tune a probability of admission using the same idea mentioned above. 
 
 
-## Getting Started
+## Let's do experiment
 
 
 
@@ -115,9 +115,41 @@ Remember to install a fan on your NVMe ssd. The temperature will rise up to 80 d
 #### Request throughput and hitratio
 We use varnishstat to get client request and cache hit data
 ```
-sudo /usr/local/varnish/bin/varnishstat -n ~/log -f MAIN.client_req -f MAIN.cache_hit
+sudo /usr/local/varnish/bin/varnishstat -n /your/dir/of/vsm -f MAIN.client_req -f MAIN.cache_hit
 ```
-We put the vsm in ~/log directory and that is where varnishstat will read shared log. To output into a file we can use flag -j, it will output in json format and it is easy to parse when plotting.
+The vsm directory is where varnishstat will read shared log. To output into a file we can use flag -j, it will output in json format and it is easy to parse when plotting.
+
+### Start client
+Start client to send request by use flag -clientTrace
+```
+cd ./client
+go build client.go
+./client -clientTrace client.tr
+```
+In our case the CDN trace is located in the same directory with client, and traces are not included in this repo. 
+
+Now we should be able to do the experiment.
+
+### Plotting
+The pyfile has the plotting code that we use, basically there are two modes.
+
+#### Plotting in real time
+Suppose you are running this experiment on a server(our case), to monitor the data in real time we can use ssh file share to mount a remote dir locally.
+```
+sudo sshfs -o allow_other,defer_permissions -p [your port] [your server ip]:[your data directory on server] [your local directory]
+```
+Put the pyfile into that local directory and change the file name in code if nescessary, call
+```
+python plot.py
+```
+#### Plot all data
+Plot all with a flag -a, adjust time interval using flag -m, specify file name using -f 
+```
+python plot.py -a -m 1 -f nvme4,nvme8,nvme16
+```
+The example above plot all data in those three file in a time interval of one minute.
+
+### Script
 
 ## Acknowledgments
 
