@@ -1,0 +1,15 @@
+#
+# Copyright YOU (c) 1900.
+#
+# (vmodtool requires this format.)
+#
+
+$Module static 3 Static VMOD
+
+DESCRIPTION
+===========
+$Event event_function
+$Function STRING info()
+
+$Function STRING hello(STRING)
+$Function BOOL lru(STRING,STRING,BOOL,STRING)

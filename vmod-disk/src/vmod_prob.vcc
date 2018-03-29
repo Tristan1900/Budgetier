@@ -1,0 +1,12 @@
+#
+# Copyright YOU (c) 1900.
+#
+# (vmodtool requires this format.)
+#
+
+$Module prob 3 prob VMOD
+
+DESCRIPTION
+===========
+$Event event_function
+$Function BOOL prob(STRING,STRING)
