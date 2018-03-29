@@ -26,7 +26,7 @@ varnish then will use mmap to map disk to memory.
 ### Control policy 
 To control obejct admission, the intuitive way is not to admit those object that only appear few times. One way to do that is maintaining a ghost cache beside the Varnish Cache(real cache). The ghost cache is a least recent use cache that keeps track of many objects(2x size of real cache) by recording their metadata and keeping counters. When a request comes in and has cache miss, varnish will call our vmod and put the metadata of that object into ghost cache and set the counter of that object to be one. Next time if the same object comes, its counter will increase. We keep a threshold that only object with a greater counter value can be admitted into real cache. Clearly by doing this we can admit objects that potentially lead to high hit ratio.
 
-The way to tune the threshold is similar to [Pannier](https://dl.acm.org/citation.cfm?id=3094785). We calculate a quota for a time interval. The quota is the amount of writes that allowed, and the way to calculate, for example, is to divide 150TB by 3 years. Below that quota in a given time interval, we admit everyhing. When amount of writes is over that quota, we begin to control admission by increasing threshold. And the penalty for excreeding quota is to not admit anything in next few time interval until the average of writes comes below the quota again. The detailed explanition is in that paper.
+The way to tune the threshold is similar to [Pannier](https://dl.acm.org/citation.cfm?id=3094785). We calculate a quota for a time interval. The quota is the amount of writes that allowed during a period of time, and the way to calculate, for example, is to divide 150TB by 3 years. Below that quota in a given time interval, we admit everyhing. When amount of writes is over that quota, we begin to control admission by increasing threshold. And the penalty for excreeding quota is to not admit anything in next few time interval until the average of writes comes below the quota again. The detailed explanition is in that paper.
 
 Another way to control admission is to use a probability model. Instead of setting threshold and maintaing ghost cache, we tune a probability of admission using the same idea mentioned above. 
 
@@ -79,6 +79,45 @@ make install
 ### Install Vmod
 
 
+## Setting up experiment
+
+### Start Back end
+According to [link](https://github.com/dasebe/webtracereplay)
+```
+sudo nginx -c server/nginx.conf
+spawn-fcgi -a 127.0.0.1 -p 9000 -n origin/origin origin/origin.tr
+```
+Here we name the trace origin.tr, which not included in this repo. 
+### Start Varnish
+In our case
+```
+sudo /usr/local/varnish/sbin/varnishd -a 0.0.0.0:6081 -n /your/dir/of/vsm -f /your/dir/of/vcl_file -T localhost:6082 -s Memory=file,/scratch/varnishcache.dat,200g -s Transient=malloc,5G
+```
+### Start monitor tools
+
+#### Disk utilization
+We use sar to moniotr disk utilization, update every 5 seconds
+```
+sar -d -p 5
+```
+
+#### Disk write
+We use S.M.A.R.T to monitor disk write
+```
+sudo nvme smart-log /dev/nvme0
+```
+to only get disk write, disk read and temperature, use
+```
+sudo nvme smart-log /dev/nvme0 | egrep 'data_units_written|data_units_read|temperature'
+```
+Remember to install a fan on your NVMe ssd. The temperature will rise up to 80 degree Celsius when doing experiment and that will cause damage to your disk.
+
+#### Request throughput and hitratio
+We use varnishstat to get client request and cache hit data
+```
+sudo /usr/local/varnish/bin/varnishstat -n ~/log -f MAIN.client_req -f MAIN.cache_hit
+```
+We put the vsm in ~/log directory and that is where varnishstat will read shared log. To output into a file we can use flag -j, it will output in json format and it is easy to parse when plotting.
 
 ## Acknowledgments
 
