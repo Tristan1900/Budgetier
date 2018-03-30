@@ -66,22 +66,14 @@ long current_objectc1;
 long current_size1 = 0L;
 long unsigned hitc1;
 
-// hillclimbing
-double lookSize;
-double stepSize;
-
 // cache
 long cache_size = 1024L*1024L*1024L*200;
 
-long quota = 1024L*1024L*1024L*3;
-long pquota = 1024L*1024L*100L;
+// 1024L*1024L*1 for every second
+long quota = 1024L*1024L*60L;
 struct cacheMT *start;
-long hit_num = 0L;
-long receive_num = 0L;
-long count_num = 0L;
 int threshold = 1;
 long cur_write = 0;
-double prob = 1;
 pthread_mutex_t lock;
 pthread_t tid;
 
@@ -101,11 +93,11 @@ event_function(VRT_CTX, struct vmod_priv *priv, enum vcl_event_e e)
 
 void *thres() {
   while(1) {
-    sleep(10);
+    sleep(60);
     pthread_mutex_lock(&lock);
-    if(cur_write > pquota) {
+    if(cur_write > quota) {
       threshold = -1;
-      cur_write -= pquota;
+      cur_write -= quota;
     } else {
       threshold = 1;
       cur_write = 0;
@@ -115,12 +107,8 @@ void *thres() {
 }
 
 VCL_BOOL 
-vmod_threshold(VRT_CTX, VCL_STRING p, VCL_STRING s, VCL_BOOL whichCache, VCL_STRING th) {
-  // set differnet method
-  // whichCache = 0;
+vmod_threshold(VRT_CTX, VCL_STRING p, VCL_STRING s) {
   pthread_mutex_lock(&lock);
-  count_num++;
-  receive_num++;
   char page[100];
   sscanf(p, "/%99[^\n]", page);
   long id = atol(page);
@@ -133,26 +121,14 @@ vmod_threshold(VRT_CTX, VCL_STRING p, VCL_STRING s, VCL_BOOL whichCache, VCL_STR
   struct cacheMT *lp, l;
   l.hash = id;
   l.size = size;
-  // just want to get size
-  if(whichCache == 0) {
-    double ran = (double)rand() / (double)RAND_MAX;
-    if(ran <= prob) {
-      cur_write += l.size;
-      pthread_mutex_unlock(&lock);
-      return(1);
-    } else {
-      pthread_mutex_unlock(&lock);
-      return(0);
-    }
-  } 
-  lp = VRB_FIND(t_key1, &h_key1, &l);
-
-  if(whichCache && threshold == -1) {
+  // if not admit, just return directly
+  if(threshold == -1) {
     pthread_mutex_unlock(&lock);
     return(0);
   }
+
+  lp = VRB_FIND(t_key1, &h_key1, &l);
   if(lp) {
-    hit_num++;
     struct cacheLT *w2;
     lp->hit_times++;
     w2 = lp->listEntry;
@@ -167,12 +143,13 @@ vmod_threshold(VRT_CTX, VCL_STRING p, VCL_STRING s, VCL_BOOL whichCache, VCL_STR
     // increment the current size and update the threshold
     cur_write += l.size;
     if(cur_write > quota && cur_write < 2 * quota) {
-      threshold = 2;
+      threshold = 1;
     } else if(cur_write >= 2 * quota && cur_write < 3 * quota) {
-      threshold = 3;
+      threshold = 2;
     } else if(cur_write >= 3 * quota) {
       threshold = -1;
     }
+
     pthread_mutex_unlock(&lock);
     return(1);
   }
@@ -203,9 +180,9 @@ vmod_threshold(VRT_CTX, VCL_STRING p, VCL_STRING s, VCL_BOOL whichCache, VCL_STR
     tpr = VRB_FIND(t_key1, &h_key1, &tpt);
 
     if(!tpr) {
-     printf("not found: %lu %lu [cache:%i]\n",wr->hash,wr->size,whichCache);
+     printf("not found: %lu %lu \n",wr->hash,wr->size);
     }
-    //if that item can be find in map, this ususally has error
+    //if that item can be find in map, this most likely has error
     assert(tpr);
 
     *current_size -= wr->size;

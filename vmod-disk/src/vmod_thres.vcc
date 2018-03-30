@@ -9,4 +9,4 @@ $Module thres 3 thres VMOD
 DESCRIPTION
 ===========
 $Event event_function
-$Function BOOL threshold(STRING,STRING,BOOL,STRING)
+$Function BOOL threshold(STRING,STRING)

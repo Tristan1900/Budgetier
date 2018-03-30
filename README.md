@@ -13,7 +13,7 @@ The goal of this research is
 The experiment is based on [Varnish Cache](https://github.com/varnishcache/varnish-cache), the backend server is using [origin](https://github.com/dasebe/webtracereplay) with Nginx.
 
 ### Workflow
-![alt Experiment workflow](./asset/CDN.png)
+![alt text](./asset/CDN.png "Experiment Workflow")
 
 The workflow is showed as above. This is only an illustrative diagram of how our experiment works, the specific internal workflow of varnish is linked [here](https://book.varnish-software.com/4.0/chapters/VCL_Basics.html).
 
@@ -28,7 +28,11 @@ To control obejct admission, the intuitive way is not to admit those object that
 
 The way to tune the threshold is similar to [Pannier](https://dl.acm.org/citation.cfm?id=3094785). We calculate a quota for a time interval. The quota is the amount of writes that allowed during a period of time, and the way to calculate, for example, is to divide 150TB by 3 years. Below that quota in a given time interval, we admit everyhing. When amount of writes is over that quota, we begin to control admission by increasing threshold. And the penalty for excreeding quota is to not admit anything in next few time interval until the average of writes comes below the quota again. The detailed explanition is in that paper.
 
-Another way to control admission is to use a probability model. Instead of setting threshold and maintaing ghost cache, we tune a probability of admission using the same idea mentioned above. 
+Another way to control admission is to use a probability model. Instead of setting threshold and maintaing ghost cache, we tune a probability of admission using the same idea mentioned above. A simple explaination of this model is when an object has been requested a lot, it has high chance of being admitted, and for those object requested few times, they might not get admitted. We tune the probability to achieve the same goal as before with very few lines of code.
+
+### Current results
+The result below shows a comparision between just using Varnish and using a static probability model. 1/8 means for every object it has 1/8 probability to be admitted.
+![alt text](./asset/static.png "Plain Varnish vs static probability")
 
 
 ## Let's do experiment
@@ -171,10 +175,10 @@ In our case the CDN trace is located in the same directory with client, and trac
 
 Now we should be able to do the experiment.
 
-### Plotting
+### Plot
 The pyfile has the plotting code that we use, basically there are two modes.
 
-#### Plotting in real time
+#### Plot in real time
 Suppose you are running this experiment on a server(our case), to monitor the data in real time we can use ssh file share to mount a remote dir locally.
 ```
 sudo sshfs -o allow_other,defer_permissions -p [your port] [your server ip]:[your data directory on server] [your local directory]
