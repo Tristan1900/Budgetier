@@ -203,7 +203,8 @@ python plot.py -a -m 1 -f nvme4,nvme8,nvme16
 ```
 The example above plot all data in those three file in a time interval of one minute.
 
-### Script
+## Author
+* Wenqi Mou
 
 ## Acknowledgments
 
