@@ -31,10 +31,19 @@ The way to tune the threshold is similar to [Pannier](https://dl.acm.org/citatio
 Another way to control admission is to use a probability model. Instead of setting threshold and maintaing ghost cache, we tune a probability of admission using the same idea mentioned above. A simple explaination of this model is when an object has been requested a lot, it has high chance of being admitted, and for those object requested few times, they might not get admitted. We tune the probability to achieve the same goal as before with very few lines of code.
 
 ### Current results
+We are using a production trace and set it to run for 300 minutes.
+
 The result below shows a comparision between just using Varnish and using a static probability model. 1/8 means for every object it has 1/8 probability to be admitted.
 ![alt text](./asset/static.png "Plain Varnish vs static probability")
+From figure we can see useing a probability model can increase the hitratio and reduce the writes to disk.
+![alt text](./asset/threshold.png "Static probability vs dynamic threshold")
+The graph above shows static probability and dynamic threshold, we can see dynamically tuning can really control the writes to disk, but the hitratio increases very slow.
 
 
+
+
+### Further experiment
+Next we want to try different function of probability. Add more metrics and try different traces. Also control the client sending rate to simulate the real production environment.
 ## Let's do experiment
 
 
@@ -198,4 +207,4 @@ The example above plot all data in those three file in a time interval of one mi
 
 ## Acknowledgments
 
-* [Daniel S. Berger](https://github.com/dasebe)
+* Handsome advisor [Daniel S. Berger](https://github.com/dasebe)
