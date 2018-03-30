@@ -35,15 +35,15 @@ We are using a production trace and set it to run for 300 minutes.
 
 The result below shows a comparision between just using Varnish and using a static probability model. 1/8 means for every object it has 1/8 probability to be admitted.
 ![alt text](./asset/static.png "Plain Varnish vs static probability")
-From figure we can see useing a probability model can increase the hitratio and reduce the writes to disk.
+From figure we can see useing a probability model can increase the hitratio by almost 30% compared to plain Varnish and it also reduces the writes to disk. The problem is that it does not control the writes as we want.
 ![alt text](./asset/threshold.png "Static probability vs dynamic threshold")
-The graph above shows static probability and dynamic threshold, we can see dynamically tuning can really control the writes to disk, but the hitratio increases very slow.
+The graph above shows static probability and dynamic threshold, we can see dynamically tuning can really control the writes to disk as we want, but the hitratio increases very slow.
 
 
 
 
 ### Further experiment
-Next we want to try different function of probability. Add more metrics and try different traces. Also control the client sending rate to simulate the real production environment.
+Next we want to try different model of probability e.g. expontial, log. Tune the dynamic threshold to increase the hitratio and relax control a bit to increase disk utilization. Add more metrics and try different traces or longer traces. Also control the client sending rate to simulate the real production environment.
 ## Let's do experiment
 
 
