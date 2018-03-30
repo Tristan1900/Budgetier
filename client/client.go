@@ -87,9 +87,7 @@ func SendRequest(s string) ([]byte, int) {
 		f, _ := os.OpenFile(filename, os.O_APPEND|os.O_WRONLY, 0600)
 		defer f.Close()
 		f.WriteString("read body error.\n")
-		// panic(err)
 	}
-	 // Check(err)
 	return val, 1
 }
 
@@ -125,10 +123,11 @@ func LoadGenerator(trace string) {
 			printCounter = 0
 			fmt.Println("Status",schedCount, sentCount, "sema", len(httpSema), cap(httpSema))
 		}
-	    printCounter++
+		time.Sleep(time.Microsecond*50)
+		printCounter++
 	}
 	// Wait for completion
-    fmt.Println("done sending", schedCount, sentCount, "sema", len(httpSema), cap(httpSema))
+  	fmt.Println("done sending", schedCount, sentCount, "sema", len(httpSema), cap(httpSema))
 	wg.Wait()
     fmt.Println("done waiting", schedCount, sentCount, "sema", len(httpSema), cap(httpSema))
 }
@@ -156,8 +155,8 @@ func throughput() {
 func main() {
     flag.Parse()
     fmt.Println("begin")
-		InitHttp(*numThread)
-		go throughput()
-		LoadGenerator(*trace)
+	InitHttp(*numThread)
+	go throughput()
+	LoadGenerator(*trace)
     fmt.Println("done")
 }
