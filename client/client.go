@@ -51,7 +51,7 @@ var setZero uint64 = 0
 // http semaphore init
 var clientPool *http.Client
 func InitHttp(numThread int) {
-	  httpSema = NewSemaphore(numThread)
+	httpSema = NewSemaphore(numThread)
     fmt.Println("init begin")
     dfTransp := http.DefaultTransport
     dfTranspPtr, ok := dfTransp.(*http.Transport)
@@ -108,7 +108,7 @@ func LoadGenerator(trace string) {
 			}
 			time.Sleep(time.Millisecond*10)
 		}
-	// issue request
+		// issue request
 		wg.Add(1)
 		atomic.AddUint64(&schedCount, 1)
 		atomic.AddUint64(&sent, 1)
@@ -127,9 +127,9 @@ func LoadGenerator(trace string) {
 		printCounter++
 	}
 	// Wait for completion
-  	fmt.Println("done sending", schedCount, sentCount, "sema", len(httpSema), cap(httpSema))
+	fmt.Println("done sending", schedCount, sentCount, "sema", len(httpSema), cap(httpSema))
 	wg.Wait()
-    fmt.Println("done waiting", schedCount, sentCount, "sema", len(httpSema), cap(httpSema))
+	fmt.Println("done waiting", schedCount, sentCount, "sema", len(httpSema), cap(httpSema))
 }
 
 func throughput() {
