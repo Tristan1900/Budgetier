@@ -1,4 +1,4 @@
-#Budgetier: Extending the lifespan of CDN SSD caches
+# Budgetier: Extending the lifespan of CDN SSD caches
 In this CMU research project, we are optimizing the Varnish caching system for flash drives and CDN request traffic.
 
 The reason why we want to use flash drives is that flash drives, or SSDs, are much faster than spinning disks both in read and write. As the price of flash drives decreases over the years, it is reasonable to replace the spinning disks used in CDN with flash drives.
