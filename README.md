@@ -1,9 +1,11 @@
-# Disk Cache Admission Control Experiment
-This is a research experiment for NVMe disk cache system with a background of CDN.
+#Budgetier: Extending the lifespan of CDN SSD caches
+In this CMU research project, we are optimizing the Varnish caching system for flash drives and CDN request traffic.
 
-NVMe is an interface specification developed specifically for NAND flash and next-generation SSDs, it is super fast both in read and write compared to SATA interface. But the problem with NAND flash is that it has limited amount of writes during its life time. For a samsung SSD(960 EVO NVMe M.2 250GB) that we use for experiment, it has 150TB write budget according to Smartmontools.
+The reason why we want to use flash drives is that flash drives, or SSDs, are much faster than spinning disks both in read and write. As the price of flash drives decreases over the years, it is reasonable to replace the spinning disks used in CDN with flash drives.
 
-The goal of this research is
+But the key problem in using flash in CDN is that flash has significant aging issues, you could only write to the flash a certain number of times before you lose that section of the drive, and performance would generally get worse over time as well. For a samsung SSD(960 EVO NVMe M.2 250GB) that we use for experiment, it has only 150TB writes budget according to Smartmontools, which means the SSD does not guarantee to perform properly if writes are beyond that budget.
+
+So the goal of this research is
 * to find a good control policy that can limit the object admission to disk cache
 * to maintain high hit ratios 
 * to be able to handle real request pattern in CDN
