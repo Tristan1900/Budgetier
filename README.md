@@ -12,7 +12,7 @@ So the goal of this research is
 
 
 ## Experiment explianed
-Our experiment uses [Varnish Cache](https://github.com/varnishcache/varnish-cache) to simulate the CDN. Varnish is a reverse proxy sitting in between web backend servers and clients. When a request comes to Varnish, Varnish will first search for the requested object its cache and respond to clients if the object is found. If the object is not found in its cache, Varnish will fetch it from the backend and cache it before sending back to clients. 
+Our experiment uses [Varnish Cache](https://github.com/varnishcache/varnish-cache) to simulate the CDN. Varnish is a reverse proxy sitting in between web backend servers and clients. When a request comes to Varnish, Varnish will first search for the requested object in its cache and respond to clients if the object is found. If the object is not found in its cache, Varnish will fetch it from the backend and cache it before sending back to clients. 
 
 We implemented our own client in Golang. Our backend server is using [origin](https://github.com/dasebe/webtracereplay) combined with Nginx.
 
@@ -23,7 +23,7 @@ The workflow is showed as above. This is only an illustrative diagram of how our
 
 The basic idea is when a cache miss happens, varnish will fetch the object from backend and call our customized Vmod to decide whether to cache that object. So the Vmod is where we implement our admission policy. 
 
-In order for Varnish to call our Vmod, we also need to specify a VCL file. VCL stands for Varnish Configuration Language, we use it to control Varnish workflow. VCL file is loaded into Varnish when Varnish starts, but it can also be loaded even when Varnish is running by calling Varnishadm. 
+In order for Varnish to call our Vmod, we also need to specify a VCL file. VCL stands for Varnish Configuration Language, we use it to control Varnish workflow. VCL file is loaded into Varnish when Varnish starts, but it can also be loaded even when Varnish is running.
 
 ### Control policy 
 To control obejct admission, the intuitive way is not to admit those object that only appear few times. One way to do that is maintaining a ghost cache beside the Varnish Cache(real cache). The ghost cache is a least recent use cache that keeps track of many objects(2x size of real cache) by recording their metadata and keeping counters. When a request comes in and has cache miss, varnish will call our vmod and put the metadata of that object into ghost cache and set the counter of that object to be one. Next time if the same object comes, its counter will increase. We keep a threshold that only object with a greater counter value can be admitted into real cache. Clearly by doing this we can admit objects that potentially lead to high hit ratio.
