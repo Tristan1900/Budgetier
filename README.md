@@ -1,7 +1,7 @@
 # Budgetier: Extending the lifespan of CDN SSD caches
 In this CMU research project, we are optimizing the Varnish caching system for flash drives and CDN request traffic.
 
-The reason why we want to use flash drives is that flash drives, or SSDs, are much faster than spinning disks both in read and write. As the price of flash drives decreases over the years, it is reasonable to replace the spinning disks used in CDN with flash drives.
+The reason why we want to use flash drives is that flash drives, or SSDs, are much faster than spinning disks both in read and write. As the price of flash drives decreases over the years, it is reasonable to replace the spinning disks that used in CDN with flash drives.
 
 But the key problem in using flash in CDN is that flash has significant aging issues, you could only write to the flash a certain number of times before you lose that section of the drive, and performance would generally get worse over time as well. For a samsung SSD(960 EVO NVMe M.2 250GB) that we use for experiment, it has only 150TB writes budget according to Smartmontools, which means the SSD does not guarantee to perform properly if writes are beyond that budget.
 
@@ -12,18 +12,18 @@ So the goal of this research is
 
 
 ## Experiment explianed
-The experiment is based on [Varnish Cache](https://github.com/varnishcache/varnish-cache), the backend server is using [origin](https://github.com/dasebe/webtracereplay) with Nginx.
+Our experiment uses [Varnish Cache](https://github.com/varnishcache/varnish-cache) to simulate the CDN. Varnish is a reverse proxy sitting in between web backend servers and clients. When a request comes to Varnish, Varnish will first search for the requested object its cache and respond to clients if the object is found. If the object is not found in its cache, Varnish will fetch it from the backend and cache it before sending back to clients. 
+
+We implemented our own client in Golang. Our backend server is using [origin](https://github.com/dasebe/webtracereplay) combined with Nginx.
 
 ### Workflow
 ![alt text](./asset/CDN.png "Experiment Workflow")
 
 The workflow is showed as above. This is only an illustrative diagram of how our experiment works, the specific internal workflow of varnish is linked [here](https://book.varnish-software.com/4.0/chapters/VCL_Basics.html).
 
-The basic idea is when a cache miss happens, varnish will call our customized Vmod, in which we can implement our admission policy to decide whether to admit that particular object into the cache. We set varnish to use disk as its cache by using this flag
-```
--s Memory=file,/your/path/to/disk,200g
-``` 
-varnish then will use mmap to map disk to memory.
+The basic idea is when a cache miss happens, varnish will fetch the object from backend and call our customized Vmod to decide whether to cache that object. So the Vmod is where we implement our admission policy. 
+
+In order for Varnish to call our Vmod, we also need to specify a VCL file. VCL stands for Varnish Configuration Language, we use it to control Varnish workflow. VCL file is loaded into Varnish when Varnish starts, but it can also be loaded even when Varnish is running by calling Varnishadm. 
 
 ### Control policy 
 To control obejct admission, the intuitive way is not to admit those object that only appear few times. One way to do that is maintaining a ghost cache beside the Varnish Cache(real cache). The ghost cache is a least recent use cache that keeps track of many objects(2x size of real cache) by recording their metadata and keeping counters. When a request comes in and has cache miss, varnish will call our vmod and put the metadata of that object into ghost cache and set the counter of that object to be one. Next time if the same object comes, its counter will increase. We keep a threshold that only object with a greater counter value can be admitted into real cache. Clearly by doing this we can admit objects that potentially lead to high hit ratio.
