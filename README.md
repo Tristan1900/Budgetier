@@ -24,15 +24,9 @@ The basic idea is when a cache miss happens, varnish will fetch the object from 
 
 In order for Varnish to call our Vmod, we also need to specify a VCL file. VCL stands for Varnish Configuration Language, we use it to control Varnish workflow. VCL file is loaded into Varnish when Varnish starts, but it can also be loaded even when Varnish is running.
 
-### Control policy 
-To control object admission, the most intuitive way is not to admit those object that only appear few times. One way to do that is maintaining a ghost cache besides the Varnish Cache(real cache). The ghost cache is a least recent used cache that keeps track of many objects(2x size of real cache) by recording their metadata. When a request comes in and has cache miss, varnish will call our Vmod and put the metadata of that object into ghost cache and set the counter of that object to be one. Next time if the same object comes, its counter will increase. When the object has been requested more than a threshold, it then can be admitted into real cache. Clearly by doing this we can admit objects that potentially lead to a high hit ratio.
-
-The way to tune the threshold is similar to [Pannier](https://dl.acm.org/citation.cfm?id=3094785). We calculate a quota for a time interval. The quota is the amount of writes allowed during a period of time, and the way to calculate, for example, is to divide 150TB by 3 years. During a time interval, if the amount of writes is below the quota, we admit everything. When amount of writes is over that quota, we begin to control admission by increasing threshold. And the penalty for exceeding quota is to not admit anything in the next few time intervals until the average of writes comes below the quota again.
-
-Another way to control admission is to use a probability model. Instead of tuning threshold and maintaining a ghost cache, we use a probability to control writes. The reason is simple, if an object has been requested a lot, on average it will have high chance of being admitted. And for those objects that are requested few times, on average they have low probability of getting admitted. We tune the probability to achieve the same goal as before with very few lines of code.
 
 ### Current results
-We are using a production trace and make it to run for 300 minutes.
+We replay a CDN production trace for 300 minutes.
 
 The result below shows a comparison between just using Varnish and using a static probability model. 1/8 means for every request has 1/8 probability to be admitted.
 ![alt text](./asset/static.png "Plain Varnish vs static probability")
@@ -42,12 +36,20 @@ The graph above shows static probability and dynamic threshold, we can see that 
 
 
 
+### Control policy 
+To control object admission, the most intuitive way is not to admit those object that only appear few times. One way to do that is maintaining a ghost cache besides the Varnish Cache(real cache). The ghost cache is a least recent used cache that keeps track of many objects(2x size of real cache) by recording their metadata. When a request comes in and has cache miss, varnish will call our Vmod and put the metadata of that object into ghost cache and set the counter of that object to be one. Next time if the same object comes, its counter will increase. When the object has been requested more than a threshold, it then can be admitted into real cache. Clearly by doing this we can admit objects that potentially lead to a high hit ratio.
 
-### Further experiment
-Next we want to try many different model, e.g. linear, exponential, log. We also want to control the client sending rate to simulate the real production environment. 
-## Let's do experiment
+The way to tune the threshold is similar to [Pannier](https://dl.acm.org/citation.cfm?id=3094785). We calculate a quota for a time interval. The quota is the amount of writes allowed during a period of time, and the way to calculate, for example, is to divide 150TB by 3 years. During a time interval, if the amount of writes is below the quota, we admit everything. When amount of writes is over that quota, we begin to control admission by increasing threshold. And the penalty for exceeding quota is to not admit anything in the next few time intervals until the average of writes comes below the quota again.
+
+Another way to control admission is to use a probability model. Instead of tuning threshold and maintaining a ghost cache, we use a probability to control writes. The reason is simple, if an object has been requested a lot, on average it will have high chance of being admitted. And for those objects that are requested few times, on average they have low probability of getting admitted. We tune the probability to achieve the same goal as before with very few lines of code.
 
 
+
+### Current Research
+Currently, we are experiment with many different admission probability models, e.g. linear, exponential, log.
+
+
+## Repeat our experiments
 
 ### Prerequisites
 We use Ubuntu 17.10, so the following guide is based on that.
@@ -185,28 +187,9 @@ In our case the CDN trace is located in the same directory with client, and trac
 
 Now we should be able to do the experiment.
 
-### Plot
-The pyfile has the plotting code that we use, basically there are two modes.
-
-#### Plot in real time
-Suppose you are running this experiment on a server(in our case), to monitor the data in real time we can use ssh file share to mount a remote dir locally.
-```
-sudo sshfs -o allow_other,defer_permissions -p [your port] [your server ip]:[your data directory on server] [your local directory]
-```
-Put the pyfile into that local directory and change the hard coded file name if nescessary, call
-```
-python plot.py
-```
-#### Plot all data
-Plot all with a flag -a, adjust time interval using flag -m, specify file name using -f 
-```
-python plot.py -a -m 1 -f nvme4,nvme8,nvme16
-```
-The example above plot all data in those three file in a time interval of one minute.
-
 ## Author
 * Wenqi Mou
 
-## Acknowledgments
+## Advisor
 
-* Handsome advisor [Daniel S. Berger](https://github.com/dasebe)
+* [Daniel S. Berger](https://github.com/dasebe)
