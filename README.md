@@ -37,14 +37,27 @@ The graph above shows static probability and dynamic threshold, we can see that 
 
 
 ### Control policy 
+#### Dynamic Threshold
 To control object admission, the intuitive way is to admit objects that has been requested many times. One way to do that is maintaining a ghost cache besides the Varnish Cache(real cache). The ghost cache can remember how many times a object has been requested. When a object has been requested more than a threshold, it then can be admitted into real cache. The graph below shows the idea of this policy.
 
-<img src="./asset/1.png" width=50%>
+<img align="center" src="./asset/1.png" width=50%>
 
-The way to tune the threshold is similar to [Pannier](https://dl.acm.org/citation.cfm?id=3094785). We calculate a quota for a time interval. The quota is the amount of writes allowed during a period of time, and the way to calculate, for example, is to divide 150TB by 3 years. During a time interval, if the amount of writes is below the quota, we admit everything. When amount of writes is over that quota, we begin to control admission by increasing threshold. And the penalty for exceeding quota is to not admit anything in the next few time intervals until the average of writes comes below the quota again.
+We assign a write budget to a time interval. Assuming that the unit of x and y axis are miniute and GB respectivly. For example, the above graph shows that the time interval is 4min and the budget is 1GB. When the writes are under budget, we admit everything. When the writes are over budget, the threshold is increased, so the growth rate of writes decreases. And we deny admissions when writes are too much, as showed in the graph that the growth rate becomes zero.
 
-Another way to control admission is to use a probability model. Instead of tuning threshold and maintaining a ghost cache, we use a probability to control writes. The reason is simple, if an object has been requested a lot, on average it will have high chance of being admitted. And for those objects that are requested few times, on average they have low probability of getting admitted. We tune the probability to achieve the same goal as before with very few lines of code.
+<img align="center" src="./asset/2.png" width=50%>
 
+The graph above shows that, if the writes are over budget for the last time interval, we deny admissions for the next few intervals until the average comes below budget. 
+
+<img align="center" src="./asset/3.png" width=50%>
+
+If writes are within budget, the next time interval admits object as usual.
+
+#### Probability Model
+Another way to control admission is to use a probability model. Instead of tuning threshold and maintaining a ghost cache, we use a probability to control writes. The reason is simple, if an object has been requested a lot, on average it will have high chance of being admitted. And for those objects that are requested few times, on average they have low probability of getting admitted. 
+
+<img align="center" src="./asset/4.png" width=50%>
+
+The graph above shows three probability model that we use. The x axis represents the writes during a time interval and y axis represents the probability of admission. We can see the probability of admission decreases when writes increases within a time interval. 
 
 
 ### Current Research
