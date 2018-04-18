@@ -1,59 +1,62 @@
-# Disk Cache Admission Control Experiment
-This is a research experiment for NVMe disk cache system with a background of CDN.
+# Budgetier: Extending the lifespan of CDN SSD caches
+In this CMU research project, we are optimizing the Varnish caching system for flash drives and CDN request traffic.
 
-NVMe is an interface specification developed specifically for NAND flash and next-generation SSDs, it is super fast both in read and write compared to SATA interface. But the problem with NAND flash is that it has limited amount of writes during its life time. For a samsung SSD(960 EVO NVMe M.2 250GB) that we use for experiment, it has 150TB write budget according to Smartmontools.
+CDN want to use flash drives (or SSDs) because they have much faster read/write speeds than spinning disks. As the price of flash drives decreases over the years, it is reasonable to replace the spinning disks used in CDN with flash drives.
 
-The goal of this research is
-* to find a good control policy that can limit the object admission to disk cache
-* to maintain high hit ratios 
-* to be able to handle real request pattern in CDN
+The key problem in using flash in CDN servers is that flash drives have a limited write budget before their performance severely degrades. For example, a Samsung SSD (960 EVO NVMe M.2 250GB), which we use in our experiments, is built for about 150TB of writes (Samsung's guarantee).
 
+This research explores
+* new control policies that limit object admission to CDN cache to achieve a write budget (such as 150TB over 3 years)
+* while maintaining high hit ratios
+* and while handling the high throughput requirements of CDNs.
 
-## Experiment explianed
-The experiment is based on [Varnish Cache](https://github.com/varnishcache/varnish-cache), the backend server is using [origin](https://github.com/dasebe/webtracereplay) with Nginx.
+## Experiment explained
+Our experiment uses [Varnish Cache](https://github.com/varnishcache/varnish-cache) to simulate the CDN. Varnish is a caching system used by many CDNs in production. In our experiment varnish sits between the client and a backend server (origin). When a request comes to Varnish, Varnish will look up the requested object in its cache and respond to clients if the object is found. If the object is not found in its cache, Varnish will fetch it from the origin and cache it before sending back to clients. 
+
+We implemented our own client in Golang. Our backend server is using [origin](https://github.com/dasebe/webtracereplay) combined with Nginx.
 
 ### Workflow
 ![alt text](./asset/CDN.png "Experiment Workflow")
 
 The workflow is showed as above. This is only an illustrative diagram of how our experiment works, the specific internal workflow of varnish is linked [here](https://book.varnish-software.com/4.0/chapters/VCL_Basics.html).
 
-The basic idea is when a cache miss happens, varnish will call our customized Vmod, in which we can implement our admission policy to decide whether to admit that particular object into the cache. We set varnish to use disk as its cache by using this flag
-```
--s Memory=file,/your/path/to/disk,200g
-``` 
-varnish then will use mmap to map disk to memory.
+The basic idea is when a cache miss happens, varnish will fetch the object from backend and call our customized Vmod to decide whether to cache that object. So the Vmod is where we implement our admission policy. 
 
-### Control policy 
-To control obejct admission, the intuitive way is not to admit those object that only appear few times. One way to do that is maintaining a ghost cache beside the Varnish Cache(real cache). The ghost cache is a least recent use cache that keeps track of many objects(2x size of real cache) by recording their metadata and keeping counters. When a request comes in and has cache miss, varnish will call our vmod and put the metadata of that object into ghost cache and set the counter of that object to be one. Next time if the same object comes, its counter will increase. We keep a threshold that only object with a greater counter value can be admitted into real cache. Clearly by doing this we can admit objects that potentially lead to high hit ratio.
+In order for Varnish to call our Vmod, we also need to specify a VCL file. VCL stands for Varnish Configuration Language, we use it to control Varnish workflow. VCL file is loaded into Varnish when Varnish starts, but it can also be loaded even when Varnish is running.
 
-The way to tune the threshold is similar to [Pannier](https://dl.acm.org/citation.cfm?id=3094785). We calculate a quota for a time interval. The quota is the amount of writes that allowed during a period of time, and the way to calculate, for example, is to divide 150TB by 3 years. Below that quota in a given time interval, we admit everyhing. When amount of writes is over that quota, we begin to control admission by increasing threshold. And the penalty for excreeding quota is to not admit anything in next few time interval until the average of writes comes below the quota again. The detailed explanition is in that paper.
-
-Another way to control admission is to use a probability model. Instead of setting threshold and maintaing ghost cache, we tune a probability of admission using the same idea mentioned above. A simple explaination of this model is when an object has been requested a lot, it has high chance of being admitted, and for those object requested few times, they might not get admitted. We tune the probability to achieve the same goal as before with very few lines of code.
 
 ### Current results
-We are using a production trace and set it to run for 300 minutes.
+We replay a CDN production trace for 300 minutes.
 
-The result below shows a comparision between just using Varnish and using a static probability model. 1/8 means for every object it has 1/8 probability to be admitted.
+The result below shows a comparison between just using Varnish and using a static probability model. 1/8 means for every request has 1/8 probability to be admitted.
 ![alt text](./asset/static.png "Plain Varnish vs static probability")
-From figure we can see useing a probability model can increase the hitratio by almost 30% compared to plain Varnish and it also reduces the writes to disk. The problem is that it does not control the writes as we want.
+From figure above we can see that using a probability model can increase the hit ratio by almost 30% compared to plain Varnish and it also reduces the writes to disk. The problem is that it does not control the writes as we want.
 ![alt text](./asset/threshold.png "Static probability vs dynamic threshold")
-The graph above shows static probability and dynamic threshold, we can see dynamically tuning can really control the writes to disk as we want, but the hitratio increases very slow.
+The graph above shows static probability and dynamic threshold, we can see that dynamically tuning can really control the writes to disk as we want.
 
 
 
+### Control policy 
+To control object admission, the most intuitive way is not to admit those object that only appear few times. One way to do that is maintaining a ghost cache besides the Varnish Cache(real cache). The ghost cache is a least recent used cache that keeps track of many objects(2x size of real cache) by recording their metadata. When a request comes in and has cache miss, varnish will call our Vmod and put the metadata of that object into ghost cache and set the counter of that object to be one. Next time if the same object comes, its counter will increase. When the object has been requested more than a threshold, it then can be admitted into real cache. Clearly by doing this we can admit objects that potentially lead to a high hit ratio.
 
-### Further experiment
-Next we want to try different model of probability e.g. expontial, log. Tune the dynamic threshold to increase the hitratio and relax control a bit to increase disk utilization. Add more metrics and try different traces or longer traces. Also control the client sending rate to simulate the real production environment.
-## Let's do experiment
+The way to tune the threshold is similar to [Pannier](https://dl.acm.org/citation.cfm?id=3094785). We calculate a quota for a time interval. The quota is the amount of writes allowed during a period of time, and the way to calculate, for example, is to divide 150TB by 3 years. During a time interval, if the amount of writes is below the quota, we admit everything. When amount of writes is over that quota, we begin to control admission by increasing threshold. And the penalty for exceeding quota is to not admit anything in the next few time intervals until the average of writes comes below the quota again.
+
+Another way to control admission is to use a probability model. Instead of tuning threshold and maintaining a ghost cache, we use a probability to control writes. The reason is simple, if an object has been requested a lot, on average it will have high chance of being admitted. And for those objects that are requested few times, on average they have low probability of getting admitted. We tune the probability to achieve the same goal as before with very few lines of code.
 
 
+
+### Current Research
+Currently, we are experiment with many different admission probability models, e.g. linear, exponential, log.
+
+
+## Repeat our experiments
 
 ### Prerequisites
-We use ubuntu 17.10, so the following guide is based on that.
+We use Ubuntu 17.10, so the following guide is based on that.
 
 To build varnish from scratch, we first need to install [dependencies](https://varnish-cache.org/docs/trunk/installation/install.html)
 
-For ubuntu that we use, install the following
+For Ubuntu that we use, install the following
 
 ```
 sudo apt-get install \
@@ -69,7 +72,7 @@ sudo apt-get install \
     python-docutils \
     python-sphinx
 ```
-Also need to install Golang since our client is written in Go
+Also you need to install Golang since our client is written in Go
 ```
 sudo apt-get install golang-go
 ```
@@ -129,7 +132,7 @@ sub vcl_backend_response {
 }
 
 ```
-The code above means if a cache miss happen, varnish will go to fetch data from backend, and after response returns, it will call vcl_backend_response. Then we call our static vmod to apply our policy.
+The code above means if a cache miss happens, varnish will go to fetch data from backend, and after response returns, it will call vcl_backend_response. Then we call our static vmod to apply our policy.
 
 For detailed information how to write vcl you can go [here](https://varnish-cache.org/docs/trunk/users-guide/vcl.html)
 
@@ -141,7 +144,7 @@ According to [link](https://github.com/dasebe/webtracereplay)
 sudo nginx -c server/nginx.conf
 spawn-fcgi -a 127.0.0.1 -p 9000 -n origin/origin origin/origin.tr
 ```
-Here we name the trace origin.tr, which not included in this repo. 
+Here we name the trace origin.tr, which is not included in this repo. 
 ### Start Varnish
 In our case
 ```
@@ -184,28 +187,6 @@ In our case the CDN trace is located in the same directory with client, and trac
 
 Now we should be able to do the experiment.
 
-### Plot
-The pyfile has the plotting code that we use, basically there are two modes.
-
-#### Plot in real time
-Suppose you are running this experiment on a server(our case), to monitor the data in real time we can use ssh file share to mount a remote dir locally.
-```
-sudo sshfs -o allow_other,defer_permissions -p [your port] [your server ip]:[your data directory on server] [your local directory]
-```
-Put the pyfile into that local directory and change the file name in code if nescessary, call
-```
-python plot.py
-```
-#### Plot all data
-Plot all with a flag -a, adjust time interval using flag -m, specify file name using -f 
-```
-python plot.py -a -m 1 -f nvme4,nvme8,nvme16
-```
-The example above plot all data in those three file in a time interval of one minute.
-
 ## Author
+* [Daniel S. Berger](https://github.com/dasebe)
 * Wenqi Mou
-
-## Acknowledgments
-
-* Handsome advisor [Daniel S. Berger](https://github.com/dasebe)
