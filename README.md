@@ -38,7 +38,7 @@ The graph above shows static probability and dynamic threshold, we can see that 
 
 ### Control policy 
 To control object admission, the intuitive way is to admit objects that has been requested many times. One way to do that is maintaining a ghost cache besides the Varnish Cache(real cache). The ghost cache can remember how many times a object has been requested. When a object has been requested more than a threshold, it then can be admitted into real cache. The graph below shows the idea of this policy.
-![alt text](./asset/1.png | width = 48)
+![alt text](./asset/1.png =48x48)
 The way to tune the threshold is similar to [Pannier](https://dl.acm.org/citation.cfm?id=3094785). We calculate a quota for a time interval. The quota is the amount of writes allowed during a period of time, and the way to calculate, for example, is to divide 150TB by 3 years. During a time interval, if the amount of writes is below the quota, we admit everything. When amount of writes is over that quota, we begin to control admission by increasing threshold. And the penalty for exceeding quota is to not admit anything in the next few time intervals until the average of writes comes below the quota again.
 
 Another way to control admission is to use a probability model. Instead of tuning threshold and maintaining a ghost cache, we use a probability to control writes. The reason is simple, if an object has been requested a lot, on average it will have high chance of being admitted. And for those objects that are requested few times, on average they have low probability of getting admitted. We tune the probability to achieve the same goal as before with very few lines of code.
