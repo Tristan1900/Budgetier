@@ -29,7 +29,7 @@ In order for Varnish to call our Vmod, we also need to specify a VCL file. VCL s
 We warm up the cache and replay a CDN production trace for 4 hours.
 
 Without using control policy, Varnish will crash due to disk I/O blocking. 
-![alt text](./asset/hitRatio.png "Hit Ratio")
+![alt text](./asset/hitratio.png "Hit Ratio")
 From figure above we can see that the original Pannier has higher hit ratio compared to our approaches. But the difference is not significant.
 ![alt text](./asset/writes.png "Writes to Disk")
 The graph above shows that the original Pannier has greater variance in terms of writes to the disk.
