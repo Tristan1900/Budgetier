@@ -205,5 +205,5 @@ In our case the CDN trace is located in the same directory with client, and trac
 Now we should be able to do the experiment.
 
 ## Author
-* [Daniel S. Berger](https://github.com/dasebe)
 * Wenqi Mou
+* [Daniel S. Berger](https://github.com/dasebe)
