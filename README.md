@@ -26,22 +26,31 @@ In order for Varnish to call our Vmod, we also need to specify a VCL file. VCL s
 
 
 ### Current results
-We replay a CDN production trace for 300 minutes.
+We warm up the cache and replay a CDN production trace for 4 hours.
 
-The result below shows a comparison between just using Varnish and using a static probability model. 1/8 means for every request has 1/8 probability to be admitted.
-![alt text](./asset/static.png "Plain Varnish vs static probability")
-From figure above we can see that using a probability model can increase the hit ratio by almost 30% compared to plain Varnish and it also reduces the writes to disk. The problem is that it does not control the writes as we want.
-![alt text](./asset/threshold.png "Static probability vs dynamic threshold")
-The graph above shows static probability and dynamic threshold, we can see that dynamically tuning can really control the writes to disk as we want.
-
+Without using control policy, Varnish will crash due to disk I/O blocking. 
+![alt text](./asset/hitRatio.eps "Hit Ratio")
+From figure above we can see that the original Pannier has higher hit ratio compared to our approaches. But the difference is not significant.
+![alt text](./asset/writes.eps "Writes to Disk")
+The graph above shows that the original Pannier has greater variance in terms of writes to the disk.
+![alt text](./asset/latency.eps "Writes to Disk")
+As a result of greater variance, the original Pannier has higher latency as showed in the graph above.
 
 
 ### Control policy 
-To control object admission, the most intuitive way is not to admit those object that only appear few times. One way to do that is maintaining a ghost cache besides the Varnish Cache(real cache). The ghost cache is a least recent used cache that keeps track of many objects(2x size of real cache) by recording their metadata. When a request comes in and has cache miss, varnish will call our Vmod and put the metadata of that object into ghost cache and set the counter of that object to be one. Next time if the same object comes, its counter will increase. When the object has been requested more than a threshold, it then can be admitted into real cache. Clearly by doing this we can admit objects that potentially lead to a high hit ratio.
+The way that [Pannier](https://dl.acm.org/citation.cfm?id=3094785) does is maintaining a ghost cache besides the Varnish Cache(real cache). The ghost cache is used to track objects by recording their metadata. When requests miss in Varnish cache, their records in ghost cache will be updated. When missing times of objects exceeds a threshold, then they will be admitted.
 
-The way to tune the threshold is similar to [Pannier](https://dl.acm.org/citation.cfm?id=3094785). We calculate a quota for a time interval. The quota is the amount of writes allowed during a period of time, and the way to calculate, for example, is to divide 150TB by 3 years. During a time interval, if the amount of writes is below the quota, we admit everything. When amount of writes is over that quota, we begin to control admission by increasing threshold. And the penalty for exceeding quota is to not admit anything in the next few time intervals until the average of writes comes below the quota again.
+The way to tune the threshold is to calculate a quota for a time interval. The quota is the amount of writes allowed during a period of time, and the way to calculate, for example, is to divide 150TB by 3 years. During a time interval, if the amount of writes is below the quota, we admit everything. When amount of writes is over that quota, we begin to control admission by increasing threshold. And the penalty for exceeding quota is to not admit anything in the next few time intervals until the average of writes comes below the quota again. The graph below illustrate this idea.
 
-Another way to control admission is to use a probability model. Instead of tuning threshold and maintaining a ghost cache, we use a probability to control writes. The reason is simple, if an object has been requested a lot, on average it will have high chance of being admitted. And for those objects that are requested few times, on average they have low probability of getting admitted. We tune the probability to achieve the same goal as before with very few lines of code.
+![alt text](./asset/overshoot.eps "Pannier")
+
+The problems of this approach are
+* hard to implement in production environment
+* and high latency
+
+The way we do is to use a probabilistic model. Instead of maintaining a ghost cache, we assign a probability of admission to each coming request. The reason is simple, given a probability such as 1%, if an object has been requested 100 times, then on average it will have high chance of being admitted. Using this approach we achieve the same goal with very few lines of code. The graph below shows our idea.
+
+![alt text](./asset/exp.eps "Probability")
 
 
 
