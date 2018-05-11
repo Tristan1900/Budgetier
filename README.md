@@ -29,11 +29,11 @@ In order for Varnish to call our Vmod, we also need to specify a VCL file. VCL s
 We warm up the cache and replay a CDN production trace for 4 hours.
 
 Without using control policy, Varnish will crash due to disk I/O blocking. 
-![alt text](./asset/hitRatio.eps "Hit Ratio")
+![alt text](./asset/hitRatio.png "Hit Ratio")
 From figure above we can see that the original Pannier has higher hit ratio compared to our approaches. But the difference is not significant.
-![alt text](./asset/writes.eps "Writes to Disk")
+![alt text](./asset/writes.png "Writes to Disk")
 The graph above shows that the original Pannier has greater variance in terms of writes to the disk.
-![alt text](./asset/latency.eps "Writes to Disk")
+![alt text](./asset/latency.png "Writes to Disk")
 As a result of greater variance, the original Pannier has higher latency as showed in the graph above.
 
 
@@ -43,7 +43,7 @@ The way that [Pannier](https://dl.acm.org/citation.cfm?id=3094785) does is maint
 
 The way to tune the threshold is to calculate a quota for a time interval. The quota is the amount of writes allowed during a period of time, and the way to calculate, for example, is to divide 150TB by 3 years. During a time interval, if the amount of writes is below the quota, we admit everything. When amount of writes is over that quota, we begin to control admission by increasing threshold. And the penalty for exceeding quota is to not admit anything in the next few time intervals until the average of writes comes below the quota again. The graph below illustrate this idea.
 
-![alt text](./asset/overshoot.eps "Pannier")
+![alt text](./asset/overshoot.png "Pannier")
 
 The problems of this approach are
 * hard to implement in production environment
@@ -52,7 +52,7 @@ The problems of this approach are
 #### Our Approach
 The way we do is to use a probabilistic model. Instead of maintaining a ghost cache, we assign a probability of admission to each coming request. The reason is simple, given a probability such as 1%, if an object has been requested 100 times, then on average it will have high chance of being admitted. Using this approach we achieve the same goal with very few lines of code. The graph below shows our idea.
 
-![alt text](./asset/exp.eps "Probability")
+![alt text](./asset/exp.png "Probability")
 
 ### Current Research
 Currently, we are experiment with many different admission probability models, e.g. linear, exponential, log.
